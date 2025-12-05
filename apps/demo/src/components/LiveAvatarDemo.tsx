@@ -7,15 +7,31 @@ export const LiveAvatarDemo = () => {
   const [sessionToken, setSessionToken] = useState("");
   const [mode, setMode] = useState<"FULL" | "CUSTOM">("FULL");
   const [error, setError] = useState<string | null>(null);
+  const [shouldStartVoiceChat, setShouldStartVoiceChat] = useState(false);
 
-  const handleStart = async () => {
+  const handleStart = async (
+    customAvatarId?: string,
+    customVoiceId?: string,
+    customContextId?: string,
+  ) => {
     try {
+      setError(null);
+      setShouldStartVoiceChat(true);
       const res = await fetch("/api/start-session", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          avatar_id: customAvatarId || undefined,
+          voice_id: customVoiceId || undefined,
+          context_id: customContextId || undefined,
+        }),
       });
       if (!res.ok) {
         const error = await res.json();
         setError(error.error);
+        setShouldStartVoiceChat(false);
         return;
       }
       const { session_token } = await res.json();
@@ -23,56 +39,37 @@ export const LiveAvatarDemo = () => {
       setMode("FULL");
     } catch (error: unknown) {
       setError((error as Error).message);
+      setShouldStartVoiceChat(false);
     }
-  };
-
-  const handleStartCustom = async () => {
-    const res = await fetch("/api/start-custom-session", {
-      method: "POST",
-    });
-    if (!res.ok) {
-      const error = await res.json();
-      setError(error.error);
-      return;
-    }
-    const { session_token } = await res.json();
-    setSessionToken(session_token);
-    setMode("CUSTOM");
   };
 
   const onSessionStopped = () => {
     // Reset the FE state
     setSessionToken("");
+    setShouldStartVoiceChat(false);
   };
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center gap-4">
-      {!sessionToken ? (
-        <>
-          {error && (
-            <div className="text-red-500">
-              {"Error getting session token: " + error}
-            </div>
-          )}
-          <button
-            onClick={handleStart}
-            className="w-fit bg-white text-black px-4 py-2 rounded-md"
-          >
-            Start Full Avatar Session
-          </button>
-
-          <button
-            onClick={handleStartCustom}
-            className="w-fit bg-white text-black px-4 py-2 rounded-md"
-          >
-            Start Custom Avatar Session
-          </button>
-        </>
-      ) : (
+      {error && !sessionToken && (
+        <div className="text-red-500">
+          {"Error getting session token: " + error}
+        </div>
+      )}
+      {sessionToken ? (
         <LiveAvatarSession
           mode={mode}
           sessionAccessToken={sessionToken}
           onSessionStopped={onSessionStopped}
+          shouldStartVoiceChat={shouldStartVoiceChat}
+          onVoiceChatStarted={() => setShouldStartVoiceChat(false)}
+        />
+      ) : (
+        <LiveAvatarSession
+          mode={mode}
+          sessionAccessToken=""
+          onSessionStopped={onSessionStopped}
+          onGetSessionToken={handleStart}
         />
       )}
     </div>

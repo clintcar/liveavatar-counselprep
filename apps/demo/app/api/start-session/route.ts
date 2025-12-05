@@ -7,10 +7,24 @@ import {
   LANGUAGE,
 } from "../secrets";
 
-export async function POST() {
+export async function POST(request: Request) {
   let session_token = "";
   let session_id = "";
   try {
+    let body = {};
+    try {
+      body = await request.json();
+    } catch {
+      // No body provided, use defaults
+    }
+
+    const customAvatarId = (body as { avatar_id?: string })?.avatar_id;
+    const customVoiceId = (body as { voice_id?: string })?.voice_id;
+    const customContextId = (body as { context_id?: string })?.context_id;
+    const avatarIdToUse = customAvatarId || AVATAR_ID;
+    const voiceIdToUse = customVoiceId || VOICE_ID;
+    const contextIdToUse = customContextId || CONTEXT_ID;
+
     const res = await fetch(`${API_URL}/v1/sessions/token`, {
       method: "POST",
       headers: {
@@ -19,10 +33,10 @@ export async function POST() {
       },
       body: JSON.stringify({
         mode: "FULL",
-        avatar_id: AVATAR_ID,
+        avatar_id: avatarIdToUse,
         avatar_persona: {
-          voice_id: VOICE_ID,
-          context_id: CONTEXT_ID,
+          voice_id: voiceIdToUse,
+          context_id: contextIdToUse,
           language: LANGUAGE,
         },
       }),
